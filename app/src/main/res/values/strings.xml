@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">NotesApp</string>
+    <string name="add_note">Добавить заметку</string>
+    <string name="hint_title">Заголовок</string>
+    <string name="hint_content">Текст заметки</string>
+    <string name="save">Сохранить</string>
+
+</resources>

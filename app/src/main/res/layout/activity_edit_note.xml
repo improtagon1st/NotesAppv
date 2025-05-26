@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:fitsSystemWindows="true"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <!-- Поле для заголовка -->
+    <EditText
+        android:id="@+id/edit_text_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="@string/hint_title"
+        android:inputType="text"
+        android:textSize="18sp"/>
+
+    <!-- Поле для текста заметки -->
+    <EditText
+        android:id="@+id/edit_text_content"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:hint="@string/hint_content"
+        android:inputType="textMultiLine"
+        android:gravity="top"
+        android:textSize="16sp"
+        android:paddingTop="8dp"/>
+
+    <!-- Кнопка сохранения -->
+    <Button
+        android:id="@+id/button_save"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/save"
+        android:layout_gravity="end"
+        android:backgroundTint="?attr/colorPrimary"
+        android:textColor="@color/white"/>
+</LinearLayout>
