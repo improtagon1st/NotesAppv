@@ -57,9 +57,10 @@ public class MainActivity extends AppCompatActivity {
 
         // 3) Клик по элементу — открываем редактор (с проверкой PIN)
         adapter.setOnItemClickListener(note -> {
+            int id = note.getId();
             if (note.isLocked()) {
                 showEnterPinDialog(entered -> {
-                    if (entered.equals(PinManager.getPin(this))) {
+                    if (entered.equals(PinManager.getPin(this, id))) {
                         openEditor(note);
                     } else {
                         Toast.makeText(this, "Неверный PIN", Toast.LENGTH_SHORT).show();
@@ -76,23 +77,25 @@ public class MainActivity extends AppCompatActivity {
             note.setFavorite(newFav);
             note.setLastUpdated(System.currentTimeMillis());
             notesViewModel.update(note);
-
             showFavorites = newFav;
             currentQuery = "";
             loadNotes();
             invalidateOptionsMenu();
         });
 
-        // 5) Клик по «замочку» — устанавливаем/вводим PIN, меняем флаг locked
+        // 5) Клик по «замочку» — per-note PIN
         adapter.setOnLockClickListener(note -> {
-            if (!PinManager.hasPin(this)) {
+            int id = note.getId();
+            if (!PinManager.hasPin(this, id)) {
+                // ещё нет PIN для этой заметки — установим новый
                 showSetPinDialog(pin -> {
-                    PinManager.savePin(this, pin);
+                    PinManager.savePin(this, id, pin);
                     toggleLock(note);
                 });
             } else {
+                // PIN уже есть — запрашиваем ввод
                 showEnterPinDialog(entered -> {
-                    if (entered.equals(PinManager.getPin(this))) {
+                    if (entered.equals(PinManager.getPin(this, id))) {
                         toggleLock(note);
                     } else {
                         Toast.makeText(this, "Неверный PIN", Toast.LENGTH_SHORT).show();
@@ -112,11 +115,12 @@ public class MainActivity extends AppCompatActivity {
                 int pos = vh.getAdapterPosition();
                 Note noteToDelete = adapter.getNoteAt(pos);
                 adapter.notifyItemChanged(pos); // отменяем визуальный свайп
+                int id = noteToDelete.getId();
 
                 if (noteToDelete.isLocked()) {
-                    // запрос PIN перед удалением
+                    // запрос PIN перед удалением этой заметки
                     showEnterPinDialog(entered -> {
-                        if (entered.equals(PinManager.getPin(MainActivity.this))) {
+                        if (entered.equals(PinManager.getPin(MainActivity.this, id))) {
                             confirmDelete(noteToDelete);
                         } else {
                             Toast.makeText(
@@ -177,7 +181,6 @@ public class MainActivity extends AppCompatActivity {
                 return false;
             }
         });
-        // Обновляем иконку и заголовок ActionBar
         MenuItem fav = menu.findItem(R.id.action_favorite);
         updateFavoriteUi(fav);
         return true;
@@ -220,8 +223,7 @@ public class MainActivity extends AppCompatActivity {
             notesViewModel.insert(new Note(title, content, ts, isFav, false));
             Toast.makeText(this, "Заметка сохранена", Toast.LENGTH_SHORT).show();
             showFavorites = false;
-        }
-        else if (req == EDIT_NOTE_REQUEST) {
+        } else if (req == EDIT_NOTE_REQUEST) {
             int id = data.getIntExtra(EditNoteActivity.EXTRA_ID, -1);
             if (id == -1) {
                 Toast.makeText(this, "Ошибка обновления", Toast.LENGTH_SHORT).show();

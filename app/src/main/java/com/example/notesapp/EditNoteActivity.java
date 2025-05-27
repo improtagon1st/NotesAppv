@@ -2,12 +2,10 @@ package com.example.notesapp;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.text.InputType;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.FrameLayout;
-import android.widget.ImageButton;
-import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -18,161 +16,139 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.google.android.material.tabs.TabLayout;
 
 import io.noties.markwon.Markwon;
-import io.noties.markwon.core.CorePlugin;
-import io.noties.markwon.ext.strikethrough.StrikethroughPlugin;
-import io.noties.markwon.ext.tasklist.TaskListPlugin;
-import io.noties.markwon.linkify.LinkifyPlugin;
 
 public class EditNoteActivity extends AppCompatActivity {
 
+    /* --- ключи для Intent --- */
     public static final String EXTRA_ID          = "com.example.notesapp.EXTRA_ID";
     public static final String EXTRA_TITLE       = "com.example.notesapp.EXTRA_TITLE";
     public static final String EXTRA_CONTENT     = "com.example.notesapp.EXTRA_CONTENT";
     public static final String EXTRA_IS_FAVORITE = "com.example.notesapp.EXTRA_IS_FAVORITE";
+    public static final String EXTRA_IS_LOCKED   = "com.example.notesapp.EXTRA_IS_LOCKED";
 
-    private EditText       editTextTitle;
-    private EditText       editMarkdown;
-    private LinearLayout   formatPanel;
-    private TabLayout      tabs;
-    private ScrollView     scrollPreview;
-    private TextView       textPreview;
-    private Button         buttonSave;
-    private FrameLayout    editContainer;
-    private Markwon        markwon;
+    /* --- View-элементы --- */
+    private EditText   editTextTitle;   // id/edit_text_title
+    private EditText   editMarkdown;    // id/edit_markdown
+    private TextView   textPreview;     // id/text_preview
+    private ScrollView scrollPreview;   // id/scroll_preview
+    private TabLayout  tabLayout;       // id/tab_layout
 
-    private int     noteId;
-    private boolean noteFav;
+    /* --- служебные флаги --- */
+    private boolean isFavorite;
+    private boolean isLocked;
+
+    /* --- markdown движок --- */
+    private Markwon markwon;
+
 
     @Override
-    protected void onCreate(@Nullable Bundle savedInstanceState) {
+    protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_edit_note);
 
-        // 1) Инициализация Markwon
-        markwon = Markwon.builder(this)
-                .usePlugin(CorePlugin.create())
-                .usePlugin(StrikethroughPlugin.create())
-                .usePlugin(TaskListPlugin.create(this))
-                .usePlugin(LinkifyPlugin.create())
-                .build();
-
-        // 2) Связываем View
+        // ——— 1) Нахождение View ——————————————————————————————————————————
         editTextTitle  = findViewById(R.id.edit_text_title);
         editMarkdown   = findViewById(R.id.edit_markdown);
-        formatPanel    = findViewById(R.id.format_panel);
-        tabs           = findViewById(R.id.tab_layout);
-        scrollPreview  = findViewById(R.id.scroll_preview);
         textPreview    = findViewById(R.id.text_preview);
-        buttonSave     = findViewById(R.id.button_save);
-        editContainer  = findViewById(R.id.edit_container);
+        scrollPreview  = findViewById(R.id.scroll_preview);
+        tabLayout      = findViewById(R.id.tab_layout);
+        Button buttonSave = findViewById(R.id.button_save);
 
-        // 3) Получаем данные из MainActivity
-        Intent in = getIntent();
-        noteId   = in.getIntExtra(EXTRA_ID, -1);
-        String title   = in.getStringExtra(EXTRA_TITLE);
-        String content = in.getStringExtra(EXTRA_CONTENT);
-        noteFav  = in.getBooleanExtra(EXTRA_IS_FAVORITE, false);
+        // ——— 2) Добавляем сами вкладки! ————————————————————————————————
+        tabLayout.addTab(tabLayout.newTab().setText("Редактор"));
+        tabLayout.addTab(tabLayout.newTab().setText("Превью"));
 
-        if (title != null) {
-            editTextTitle.setText(title);
+        markwon = Markwon.create(this);
+
+        // 2. Получаем данные из Intent (если редактирование)
+        Intent intent = getIntent();
+        if (intent.hasExtra(EXTRA_ID)) {
+            editTextTitle.setText(intent.getStringExtra(EXTRA_TITLE));
+            String md = intent.getStringExtra(EXTRA_CONTENT);
+            editMarkdown.setText(md);
+            renderMarkdown(md);
+
+            isFavorite = intent.getBooleanExtra(EXTRA_IS_FAVORITE, false);
+            isLocked   = intent.getBooleanExtra(EXTRA_IS_LOCKED,   false);
+        } else {
+            isFavorite = false;
+            isLocked   = false;
         }
-        if (content != null) {
-            editMarkdown.setText(content);
-            markwon.setMarkdown(textPreview, content);
-        }
 
-        // 4) Настройка вкладок
-        tabs.addTab(tabs.newTab().setText("Редактор"));
-        tabs.addTab(tabs.newTab().setText("Превью"));
+        // 3. Если заметка заблокирована — редактор скрыт, TextView доступен
+        applyLockStateInitially();
 
-        // По умолчанию — Превью
-        tabs.getTabAt(1).select();
-        enterPreviewMode();
-
-        tabs.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
-            @Override
-            public void onTabSelected(TabLayout.Tab tab) {
-                if (tab.getPosition() == 0) {
-                    enterEditMode();
-                } else {
-                    enterPreviewMode();
+        // 4. Переключение вкладок
+        tabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
+            @Override public void onTabSelected(TabLayout.Tab tab) {
+                if (tab.getPosition() == 0) {                 // «Редактор»
+                    if (isLocked) {          // заблокирована? показываем toast и уходим на превью
+                        Toast.makeText(EditNoteActivity.this,
+                                "Заметка заблокирована", Toast.LENGTH_SHORT).show();
+                        tabLayout.getTabAt(1).select();
+                    } else {
+                        editMarkdown.setVisibility(View.VISIBLE);
+                        scrollPreview.setVisibility(View.GONE);
+                    }
+                } else {                                      // «Превью»
+                    renderMarkdown(editMarkdown.getText().toString());
+                    editMarkdown.setVisibility(View.GONE);
+                    scrollPreview.setVisibility(View.VISIBLE);
                 }
             }
             @Override public void onTabUnselected(TabLayout.Tab tab) { }
             @Override public void onTabReselected(TabLayout.Tab tab) { }
         });
+        // по умолчанию открываем Редактор/Превью в зависимости от lock
+        tabLayout.getTabAt(isLocked ? 1 : 0).select();
 
-        // 5) Клик по любой области preview — переходим в редактор
-        editContainer.setOnClickListener(v -> {
-            if (tabs.getSelectedTabPosition() == 1) {
-                tabs.selectTab(tabs.getTabAt(0));
-            }
-        });
-
-        // 6) Кнопки форматирования
-        findViewById(R.id.btn_heading).setOnClickListener(v ->
-                insertMarkdownAtCursor(editMarkdown, "## ", "")
-        );
-        findViewById(R.id.btn_list).setOnClickListener(v ->
-                insertMarkdownAtCursor(editMarkdown, "- ", "")
-        );
-        findViewById(R.id.btn_link).setOnClickListener(v ->
-                insertMarkdownAtCursor(editMarkdown, "[текст](url)", "")
-        );
-
-        // 7) Сохранение
-        buttonSave.setOnClickListener(v -> {
-            String newTitle   = editTextTitle.getText().toString().trim();
-            String newContent = editMarkdown.getText().toString().trim();
-            if (newTitle.isEmpty() && newContent.isEmpty()) {
-                Toast.makeText(this, "Нечего сохранять", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            Intent data = new Intent();
-            data.putExtra(EXTRA_ID,           noteId);
-            data.putExtra(EXTRA_TITLE,        newTitle);
-            data.putExtra(EXTRA_CONTENT,      newContent);
-            data.putExtra(EXTRA_IS_FAVORITE,  noteFav);
-            setResult(RESULT_OK, data);
-            finish();
-        });
+        // 5. Кнопка «Сохранить»
+        buttonSave.setOnClickListener(v -> saveAndFinish(intent));
+        tabLayout.getTabAt(isLocked ? 1 : 0).select();
     }
 
-    /** Переключаемся в режим редактирования **/
-    private void enterEditMode() {
-        editTextTitle.setEnabled(true);
-        editMarkdown.setVisibility(View.VISIBLE);
-        scrollPreview.setVisibility(View.GONE);
-        formatPanel.setVisibility(View.VISIBLE);
+    /** Первичное отображение/скрытие для заблокированной заметки */
+    private void applyLockStateInitially() {
+        if (isLocked) {
+            editMarkdown.setVisibility(View.GONE);
+            scrollPreview.setVisibility(View.VISIBLE);
+            editTextTitle.setEnabled(false);
+        } else {
+            scrollPreview.setVisibility(View.GONE);
+            editMarkdown.setVisibility(View.VISIBLE);
+            editTextTitle.setEnabled(true);
+        }
+        // убираем курсор и клавиатуру у EditText в режиме превью
+        if (isLocked) {
+            editMarkdown.setInputType(InputType.TYPE_NULL);
+        }
     }
 
-    /** Переключаемся в режим превью **/
-    private void enterPreviewMode() {
-        editTextTitle.setEnabled(false);
-        markwon.setMarkdown(textPreview, editMarkdown.getText().toString());
-        editMarkdown.setVisibility(View.GONE);
-        scrollPreview.setVisibility(View.VISIBLE);
-        formatPanel.setVisibility(View.GONE);
+    /** Рендеринг markdown в превью */
+    private void renderMarkdown(String md) {
+        markwon.setMarkdown(textPreview, md == null ? "" : md);
     }
 
-    /**
-     * Вставляет в EditText перед текстом before и after,
-     * сохраняя выделение
-     */
-    private void insertMarkdownAtCursor(EditText et, String before, String after) {
-        int start = et.getSelectionStart();
-        int end   = et.getSelectionEnd();
-        String text = et.getText().toString();
+    /** Собираем результат и возвращаем в MainActivity */
+    private void saveAndFinish(Intent startIntent) {
+        String title   = editTextTitle.getText().toString().trim();
+        String content = editMarkdown.getText().toString().trim();
 
-        String updated = text.substring(0, start)
-                + before
-                + text.substring(start, end)
-                + after
-                + text.substring(end);
+        if (title.isEmpty() && content.isEmpty()) {
+            Toast.makeText(this,
+                    "Введите текст или заголовок", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        Intent data = new Intent();
+        data.putExtra(EXTRA_TITLE,       title);
+        data.putExtra(EXTRA_CONTENT,     content);
+        data.putExtra(EXTRA_IS_FAVORITE, isFavorite);
+        data.putExtra(EXTRA_IS_LOCKED,   isLocked);
 
-        et.setText(updated);
-        int selStart = start + before.length();
-        int selEnd   = selStart + (end - start);
-        et.setSelection(selStart, selEnd);
+        if (startIntent.hasExtra(EXTRA_ID)) {
+            data.putExtra(EXTRA_ID, startIntent.getIntExtra(EXTRA_ID, -1));
+        }
+        setResult(RESULT_OK, data);
+        finish();
     }
 }
