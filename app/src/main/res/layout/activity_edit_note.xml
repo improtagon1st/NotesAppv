@@ -1,40 +1,136 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
-    android:fitsSystemWindows="true"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/root_edit"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:fitsSystemWindows="true"
     android:orientation="vertical"
-    android:padding="16dp">
+    android:padding="0dp">
 
-    <!-- Поле для заголовка -->
+    <!-- 1) Заголовок заметки -->
     <EditText
         android:id="@+id/edit_text_title"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:hint="@string/hint_title"
-        android:inputType="text"
-        android:textSize="18sp"/>
+        android:inputType="textCapSentences"
+        android:autofillHints="none"
+        android:importantForAutofill="no"
+        android:padding="16dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:enabled="false"
+        android:textAppearance="?attr/textAppearanceHeadline6"
+        tools:ignore="SpeakableTextDuplicate"/>
 
-    <!-- Поле для текста заметки -->
-    <EditText
-        android:id="@+id/edit_text_content"
+    <!-- 2) Панель форматирования -->
+    <LinearLayout
+        android:id="@+id/format_panel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="8dp"
+        android:gravity="center_vertical"
+        android:visibility="visible">
+
+        <ImageButton
+            android:id="@+id/btn_heading"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:padding="12dp"
+            android:src="@drawable/ic_format_size"
+            android:contentDescription="@string/cd_heading"
+            app:tint="?attr/colorOnSurface"
+            android:background="?attr/selectableItemBackgroundBorderless"/>
+
+        <ImageButton
+            android:id="@+id/btn_list"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:padding="12dp"
+            android:layout_marginStart="16dp"
+            android:src="@drawable/ic_format_list_bulleted"
+            android:contentDescription="@string/cd_list"
+            app:tint="?attr/colorOnSurface"
+            android:background="?attr/selectableItemBackgroundBorderless"/>
+
+        <ImageButton
+            android:id="@+id/btn_link"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:padding="12dp"
+            android:layout_marginStart="16dp"
+            android:src="@drawable/ic_insert_link"
+            android:contentDescription="@string/cd_link"
+            app:tint="?attr/colorOnSurface"
+            android:background="?attr/selectableItemBackgroundBorderless"/>
+
+    </LinearLayout>
+
+    <!-- 3) Вкладки -->
+    <com.google.android.material.tabs.TabLayout
+        android:id="@+id/tab_layout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:contentDescription="@string/cd_tab_layout"
+        app:tabMode="fixed"
+        app:tabIndicatorColor="?attr/colorPrimary"
+        app:tabTextAppearance="@style/TextAppearance.MaterialComponents.Button"/>
+
+    <!-- 4) Контейнер редактора/превью -->
+    <FrameLayout
+        android:id="@+id/edit_container"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:hint="@string/hint_content"
-        android:inputType="textMultiLine"
-        android:gravity="top"
-        android:textSize="16sp"
-        android:paddingTop="8dp"/>
+        android:clickable="true"
+        android:foreground="?attr/selectableItemBackground">
 
-    <!-- Кнопка сохранения -->
+        <!-- a) Markdown-редактор -->
+        <EditText
+            android:id="@+id/edit_markdown"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="top"
+            android:inputType="textMultiLine|textCapSentences"
+            android:autofillHints="none"
+            android:importantForAutofill="no"
+            android:hint="@string/hint_content"
+            android:padding="16dp"
+            android:textSize="16sp"
+            android:visibility="gone"
+            android:textAppearance="@style/TextAppearance.MaterialComponents.Body1"/>
+
+        <!-- b) Превью -->
+        <ScrollView
+            android:id="@+id/scroll_preview"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <TextView
+                android:id="@+id/text_preview"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:padding="16dp"
+                android:textSize="16sp"
+                android:importantForAccessibility="yes"
+                android:textAppearance="@style/TextAppearance.MaterialComponents.Body1"/>
+        </ScrollView>
+
+    </FrameLayout>
+
+    <!-- 5) Кнопка «Сохранить» -->
     <Button
         android:id="@+id/button_save"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="@string/save"
+        android:layout_margin="16dp"
         android:layout_gravity="end"
+        android:text="@string/save"
         android:backgroundTint="?attr/colorPrimary"
-        android:textColor="@color/white"/>
+        android:textColor="@android:color/white"
+        android:importantForAutofill="no"/>
+
 </LinearLayout>

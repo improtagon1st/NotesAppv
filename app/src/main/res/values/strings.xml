@@ -4,5 +4,12 @@
     <string name="hint_title">Заголовок</string>
     <string name="hint_content">Текст заметки</string>
     <string name="save">Сохранить</string>
+    <string name="cd_heading">Заголовок</string>
+    <string name="cd_list">Маркированный список</string>
+    <string name="cd_link">Вставить ссылку</string>
+    <string name="cd_tab_layout">Переключение между редактором и просмотром</string>
+    <string name="cd_lock">Блокировать/разблокировать заметку</string>
+    <string name="cd_favorite">Избранное</string>
+
 
 </resources>

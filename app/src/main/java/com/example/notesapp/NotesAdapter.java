@@ -18,8 +18,11 @@ import java.util.Locale;
 public class NotesAdapter extends RecyclerView.Adapter<NotesAdapter.NoteHolder> {
 
     private List<Note> notes = new ArrayList<>();
+
+    // Слушатели кликов
     private OnItemClickListener clickListener;
     private OnFavoriteClickListener favListener;
+    private OnLockClickListener lockListener;
 
     @NonNull
     @Override
@@ -31,33 +34,50 @@ public class NotesAdapter extends RecyclerView.Adapter<NotesAdapter.NoteHolder> 
 
     @Override
     public void onBindViewHolder(@NonNull NoteHolder holder, int position) {
-        Note current = notes.get(position);
-        holder.textViewTitle.setText(current.getTitle());
+        Note note = notes.get(position);
 
-        // Форматирование и отображение даты
-        SimpleDateFormat sdf = new SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault());
-        holder.textViewDate.setText(sdf.format(new Date(current.getLastUpdated())));
+        // Заголовок
+        holder.textViewTitle.setText(note.getTitle());
 
-        // Всегда показываем иконку; меняем ресурс в зависимости от состояния isFavorite
-        if (current.isFavorite()) {
-            holder.imageViewFavorite.setImageResource(R.drawable.ic_star);
-        } else {
-            holder.imageViewFavorite.setImageResource(R.drawable.ic_star_border);
-        }
+        // Дата последнего обновления
+        String formattedDate = new SimpleDateFormat(
+                "dd.MM.yyyy HH:mm", Locale.getDefault())
+                .format(new Date(note.getLastUpdated()));
+        holder.textViewDate.setText(formattedDate);
 
-        // Клик по элементу (редактирование)
+        // Иконка «избранное»
+        int favRes = note.isFavorite()
+                ? R.drawable.ic_star    // закрашенная звезда
+                : R.drawable.ic_star_border; // контур звезды
+        holder.imageFavorite.setImageResource(favRes);
+
+        // Иконка «замок»
+        int lockRes = note.isLocked()
+                ? R.drawable.ic_lock     // закрытый замок
+                : R.drawable.ic_lock_open; // открытый замок
+        holder.imageLock.setImageResource(lockRes);
+
+        // Клик по карточке — открытие/редактирование
         holder.itemView.setOnClickListener(v -> {
-            int pos = holder.getAdapterPosition();
-            if (clickListener != null && pos != RecyclerView.NO_POSITION) {
-                clickListener.onItemClick(current);
+            if (clickListener != null &&
+                    holder.getAdapterPosition() != RecyclerView.NO_POSITION) {
+                clickListener.onItemClick(note);
             }
         });
 
-        // Клик по звёздочке — переключаем избранное
-        holder.imageViewFavorite.setOnClickListener(v -> {
-            int pos = holder.getAdapterPosition();
-            if (favListener != null && pos != RecyclerView.NO_POSITION) {
-                favListener.onFavoriteClick(current);
+        // Клик по «звёздочке» — переключение избранного
+        holder.imageFavorite.setOnClickListener(v -> {
+            if (favListener != null &&
+                    holder.getAdapterPosition() != RecyclerView.NO_POSITION) {
+                favListener.onFavoriteClick(note);
+            }
+        });
+
+        // Клик по замочку — блокировка/разблокировка
+        holder.imageLock.setOnClickListener(v -> {
+            if (lockListener != null &&
+                    holder.getAdapterPosition() != RecyclerView.NO_POSITION) {
+                lockListener.onLockClick(note);
             }
         });
     }
@@ -67,18 +87,19 @@ public class NotesAdapter extends RecyclerView.Adapter<NotesAdapter.NoteHolder> 
         return notes.size();
     }
 
-    /** Обновляет список и уведомляет адаптер */
+    /** Обновить список заметок */
     public void setNotes(List<Note> notes) {
         this.notes = notes;
         notifyDataSetChanged();
     }
 
-    /** Возвращает заметку по позиции (для swipe и кликов) */
+    /** Получить заметку по позиции (для swipe и т.д.) */
     public Note getNoteAt(int position) {
         return notes.get(position);
     }
 
-    // Интерфейс клика по элементу
+    // Интерфейсы слушателей
+
     public interface OnItemClickListener {
         void onItemClick(Note note);
     }
@@ -86,7 +107,6 @@ public class NotesAdapter extends RecyclerView.Adapter<NotesAdapter.NoteHolder> 
         this.clickListener = listener;
     }
 
-    // Интерфейс клика по иконке «избранное»
     public interface OnFavoriteClickListener {
         void onFavoriteClick(Note note);
     }
@@ -94,16 +114,26 @@ public class NotesAdapter extends RecyclerView.Adapter<NotesAdapter.NoteHolder> 
         this.favListener = listener;
     }
 
-    class NoteHolder extends RecyclerView.ViewHolder {
-        private final TextView textViewTitle;
-        private final TextView textViewDate;
-        private final ImageView imageViewFavorite;
+    public interface OnLockClickListener {
+        void onLockClick(Note note);
+    }
+    public void setOnLockClickListener(OnLockClickListener listener) {
+        this.lockListener = listener;
+    }
+
+    /** ViewHolder для одной карточки заметки */
+    static class NoteHolder extends RecyclerView.ViewHolder {
+        TextView textViewTitle;
+        TextView textViewDate;
+        ImageView imageFavorite;
+        ImageView imageLock;
 
         public NoteHolder(@NonNull View itemView) {
             super(itemView);
-            textViewTitle     = itemView.findViewById(R.id.text_view_title);
-            textViewDate      = itemView.findViewById(R.id.text_view_date);
-            imageViewFavorite = itemView.findViewById(R.id.image_view_favorite);
+            textViewTitle    = itemView.findViewById(R.id.text_view_title);
+            textViewDate     = itemView.findViewById(R.id.text_view_date);
+            imageFavorite    = itemView.findViewById(R.id.image_favorite);
+            imageLock        = itemView.findViewById(R.id.image_lock);
         }
     }
 }
